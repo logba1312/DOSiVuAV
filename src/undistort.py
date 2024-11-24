@@ -18,7 +18,7 @@ def undistort():
     tvecs = calibratio['tvecs']
 
     # Load one of the test images
-    img = cv2.imread(findFile('test1.jpg', Path(__file__).parent.parent))
+    img = cv2.imread(findFile('straight_lines1.jpg', Path(__file__).parent.parent))
     h, w = img.shape[:2]
 
     # Obtain the new camera matrix and undistort the image
@@ -27,7 +27,7 @@ def undistort():
 
     # Display the final result
     cv2.imshow('chess board', np.hstack((img, undistortedImg)))
-    cv2.waitKey(0)
+    # cv2.waitKey(0)
     cv2.destroyAllWindows()
 
     return undistortedImg

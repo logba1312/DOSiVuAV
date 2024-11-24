@@ -1,7 +1,6 @@
 import numpy as np
 import cv2
 import glob
-import os
 
 def calibrateCamera():
     # Define the chess board rows and columns
@@ -29,7 +28,7 @@ def calibrateCamera():
 
         # Make sure the chess board pattern was found in the image
         if ret:
-            print("Pattern found!")
+            # print("Pattern found!")
             # Refine the corner position
             corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
 
@@ -41,7 +40,7 @@ def calibrateCamera():
             cv2.drawChessboardCorners(img, (rows, columns), corners, ret)
 
         # Display the image
-        cv2.imshow('chess board', img)
+        # cv2.imshow('chess board', img)
         # cv2.waitKey(0)
 
     return cv2.calibrateCamera(objectPointsArray, imagePointsArray, gray.shape[::-1], None, None)
