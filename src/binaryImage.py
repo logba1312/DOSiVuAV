@@ -10,6 +10,7 @@ def binaryImage(image):
 
     # Apply Gaussian blur
     blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+    cv2.imshow("Blurred", blurred)
 
     # Compute gradients
     sobelX = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)  # Gradient in x

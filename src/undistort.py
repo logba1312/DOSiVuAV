@@ -9,16 +9,14 @@ def findFile(filename, search_path):
         return file  # Return the first matching file
     return None  # Return None if no file is found
 
-def undistort():
+def undistort(img):
     # Load calibrated camera parameters
     calibratio = np.load(findFile('calib.npz', Path(__file__).parent.parent))
     mtx = calibratio['mtx']
     dist = calibratio['dist']
     rvecs = calibratio['rvecs']
     tvecs = calibratio['tvecs']
-
-    # Load one of the test images
-    img = cv2.imread(findFile('straight_lines1.jpg', Path(__file__).parent.parent))
+    
     h, w = img.shape[:2]
 
     # Obtain the new camera matrix and undistort the image

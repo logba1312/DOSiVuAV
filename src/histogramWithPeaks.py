@@ -15,7 +15,7 @@ def histogramWithPeaks(image):
     histogram = np.sum(image, axis=0)  # axis=0 sums along the columns
 
     # Find peaks in the histogram
-    peaks, _ = find_peaks(histogram, height=60, distance=50)
+    peaks, _ = find_peaks(histogram, height=100, distance=50)
 
     print(peaks)
     print(histogram[peaks])
