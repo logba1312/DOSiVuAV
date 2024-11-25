@@ -53,7 +53,7 @@ def binaryImage(image):
     kernel = np.ones((5, 5), np.uint8)
     closed = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel)
     cv2.imshow("Morphological", closed)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
-    return closed
+    return closed, gradient
