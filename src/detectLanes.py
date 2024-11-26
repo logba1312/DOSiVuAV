@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 def detectVerticalLines(image, leftLaneCoordinate, rightLaneCoordinate, tolerance=20):
     # Hough Line Transform
-    lines = cv2.HoughLinesP(image, rho=1, theta=np.pi / 180, threshold=30, minLineLength=5, maxLineGap=200)
+    lines = cv2.HoughLinesP(image, rho=1, theta=np.pi / 180, threshold=30, minLineLength=5, maxLineGap=300)
 
     filtered_lines = []
 

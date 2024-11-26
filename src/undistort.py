@@ -24,8 +24,8 @@ def undistort(img):
     undistortedImg = cv2.undistort(img, mtx, dist, None, newCameraMtx)
 
     # Display the final result
-    cv2.imshow('chess board', np.hstack((img, undistortedImg)))
+    # cv2.imshow('chess board', np.hstack((img, undistortedImg)))
     # cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # cv2.destroyAllWindows()
 
     return undistortedImg

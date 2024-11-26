@@ -43,7 +43,7 @@ def warpImage(image):
 
     # Display the result
     # cv2.imshow("Warped Image", warpedImage)
-    plt.imshow(warpedImage)
+    # plt.imshow(warpedImage)
     # cv2.destroyAllWindows()
 
     return warpedImage

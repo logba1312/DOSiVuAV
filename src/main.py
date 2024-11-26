@@ -22,8 +22,16 @@ def main():
     # _, mtx, dist, rvecs, tvecs = cc.calibrateCamera()
     # np.savez(r'C:\Users\david\OneDrive\Documents\DOSiVuAV\Zadatak\camera_cal\calib.npz', mtx=mtx, dist=dist, rvecs=rvecs, tvecs=tvecs)
     # Load one of the test images
-    img = cv2.imread(findFile('test2.jpg', Path(__file__).parent.parent))
+    fileName = 'project_video01.mp4'
 
+    # displayImageResult(fileName)
+    displayVideoResult(fileName)
+
+    
+
+def displayImageResult(imgName):
+    # Open image
+    img = cv2.imread(findFile(imgName, Path(__file__).parent.parent))
     # Change image size if the resolusion is different from camera resolution
     if img.shape[1] != 1280 or img.shape[0] != 720:
         # Resize the image to specific dimensions
@@ -31,6 +39,7 @@ def main():
         resizedImage = cv2.resize(img, (newWidth, newHeight), interpolation=cv2.INTER_LINEAR)
         img = resizedImage
 
+    # Process the image
     undistortedImage = undistort.undistort(img)
     warpedImg = wi.warpImage(undistortedImage)
     binaryImage, sobelImage = bi.binaryImage(warpedImg)
@@ -45,18 +54,18 @@ def main():
             rightLane = point
             break
 
-    vehiclePosition = (675 - leftLane) * 0.006 # vehicle offset from center in meters
+    vehiclePosition =  np.abs((leftLane + rightLane) / 2 - 665) * 0.006 # vehicle offset from center in meters
 
     # Plot the histogram
-    plt.figure()
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1, 2, 1)
     plt.imshow(warpedImg)
-    plt.scatter([leftLane, rightLane], [300, 300], color='red', label=['Left', 'Right'])
+    plt.scatter([leftLane, rightLane], [200, 200], color='red', label=['Left', 'Right'])
     plt.scatter([leftLane, rightLane], [700, 700], color='red', label=['Left', 'Right'])
-    plt.plot([leftLane, leftLane], [300, 720], color='red', linewidth=2)
-    plt.plot([rightLane, rightLane], [300, 720], color='red', linewidth=2)
+    plt.plot([leftLane, leftLane], [200, 720], color='red', linewidth=2)
+    plt.plot([rightLane, rightLane], [200, 720], color='red', linewidth=2)
     plt.title('Location of left and right lane')
-    plt.text(5, 35, f"Vehicle offset from center: {vehiclePosition:.4f}m", fontsize=12, color='yellow')
-    plt.show()
+    plt.text(5, 35, f"Vehicle offset from center: {vehiclePosition:.3f}m", fontsize=12, color='yellow')
 
     filteredLanes = dl.detectVerticalLines(binaryImage, leftLane, rightLane)
 
@@ -64,10 +73,80 @@ def main():
     for x1, y1, x2, y2 in filteredLanes:
         cv2.line(warpedImg, (x1, y1), (x2, y2), (0, 255, 0), 5)
 
+    plt.subplot(1, 2, 2)
     plt.imshow(cv2.cvtColor(warpedImg, cv2.COLOR_BGR2RGB))
     plt.title("Detected Vertical Lines")
-    plt.text(5, 35, f"Vehicle offset from center: {vehiclePosition:.4f}m", fontsize=12, color='white')
+    plt.text(5, 35, f"Vehicle offset from center: {vehiclePosition:.3f}m", fontsize=12, color='white')
+    plt.tight_layout()
     plt.show()
+
+def displayVideoResult(videoName):
+    # Path to the video file
+    video_capture = cv2.VideoCapture(findFile(videoName, Path(__file__).parent.parent))
+
+    # Check if the video file was opened successfully
+    if not video_capture.isOpened():
+        print("Error: Could not open video file.")
+        exit()
+
+    # Process video frames
+    while True:
+        ret, frame = video_capture.read()  # Read a frame from the video
+
+        # Break the loop if no frame is returned (end of video)
+        if not ret:
+            break
+
+        # Change image size if the resolution is different from camera resolution
+        if frame.shape[1] != 1280 or frame.shape[0] != 720:
+            newWidth, newHeight = 1280, 720
+            frame = cv2.resize(frame, (newWidth, newHeight), interpolation=cv2.INTER_LINEAR)
+
+        # Process the frame
+        undistortedImage = undistort.undistort(frame)  # Use your undistort function
+        warpedImg = wi.warpImage(undistortedImage)    # Use your warp function
+        binaryImage, sobelImage = bi.binaryImage(warpedImg)  # Binary and Sobel images
+        laneCoordinates = hist.histogramWithPeaks(binaryImage)  # Histogram peak detection
+        leftLane, rightLane = 0, 0
+
+        for point in laneCoordinates:
+            if point <= 650:
+                leftLane = point
+            else:
+                rightLane = point
+                break
+
+        vehiclePosition = np.abs((leftLane + rightLane) / 2 - 665) * 0.006  # Vehicle offset from center in meters
+
+        # Detect vertical lines
+        filteredLanes = dl.detectVerticalLines(binaryImage, leftLane, rightLane)
+
+        # Draw detected lanes on the warped image
+        for x1, y1, x2, y2 in filteredLanes:
+            cv2.line(warpedImg, (x1, y1), (x2, y2), (0, 255, 0), 5)
+
+        # Display the result using OpenCV (you can save the frames if needed)
+        displayImg = cv2.cvtColor(warpedImg, cv2.COLOR_BGR2RGB)  # Convert to RGB for display
+        cv2.putText(
+            displayImg,
+            f"Vehicle offset: {vehiclePosition:.3f} m",  # Text content
+            (5, 500),  # Position (x, y)
+            cv2.FONT_HERSHEY_SIMPLEX,  # Font type
+            1,  # Font scale
+            (255, 255, 0),  # Font color (Yellowish)
+            2,  # Thickness
+            cv2.LINE_AA,  # Line type
+        )
+        cv2.imshow("Processed Frame", displayImg)
+        cv2.imshow("Original Image", frame)        
+
+        # Break the loop when 'q' is pressed
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    # Release the video capture and close OpenCV windows
+    video_capture.release()
+    cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     main()
