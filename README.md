@@ -78,7 +78,7 @@ After selecting the source points, the destination points also needed to be sele
 ```
 
 With these points I was able to calculate the perspective transformation matrix using cv2.getPerspectiveTransform. Finally, using this matrix, the image could be warped with the cv2.warpPerspective function.
-With hindsight, the 
+With hindsight, the destination and source points should have been chosen differently, as the camera is positioned slightly to the right of the center of the car. The not so ideal choice of poinst results in a bad reverse-warp of the detected lanes, however that is only for show. Functionality wise it still does the job well.
 
 ![image3]
 
@@ -88,8 +88,10 @@ The code described below an be found in ./src/binaryImage.py
 I wanted to create a binary image that made the lanes look as thick as possible and in order to achieve that, I used multiple algorithms combined. The algorithms in question are Sobel edge detection, threshold, binary masking, and morpological closing.
 To prepare for the Sobel algorithm, first the warped image was turned into a gray image using cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) for the same reason as explained earlier. Secondly a Gaussian blur was applied in order to remove any existing noise that would impact the edge detection. Finally I used the cv2.Sobel function to calculate the gradient but only on the x-axis, because this would ignore all horisontal lines and detect vertial ones, which is exactly what we need. The output from the Sobel function is still not a binary image, so a binary threshold is applied to the image (but not before scaling the image to uint8 - values from 0 to 255). By testing multiple threshold values, 50 was showing great results.
 
-![image4][image5]
-![image6][image7]
+![image4]
+![image5]
+![image6]
+![image7]
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
