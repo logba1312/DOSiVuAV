@@ -22,10 +22,11 @@ def main():
     # _, mtx, dist, rvecs, tvecs = cc.calibrateCamera()
     # np.savez(r'C:\Users\david\OneDrive\Documents\DOSiVuAV\Zadatak\camera_cal\calib.npz', mtx=mtx, dist=dist, rvecs=rvecs, tvecs=tvecs)
     # Load one of the test images
-    fileName = 'project_video01.mp4'
+    fileName = 'test1.jpg'
+    # fileName = 'challenge01.mp4'
 
-    # displayImageResult(fileName)
-    displayVideoResult(fileName)
+    displayImageResult(fileName)
+    # displayVideoResult(fileName)
 
     
 
@@ -41,20 +42,20 @@ def displayImageResult(imgName):
 
     # Process the image
     undistortedImage = undistort.undistort(img)
-    warpedImg = wi.warpImage(undistortedImage)
-    binaryImage, sobelImage = bi.binaryImage(warpedImg)
+    warpedImg, warpMatrix = wi.warpImage(undistortedImage)
+    binaryImage = bi.binaryImage(warpedImg)
     laneCooridnates = hist.histogramWithPeaks(binaryImage)
     leftLane = 0
     rightLane = 0
 
     for point in laneCooridnates:
-        if point <= 650:
+        if point <= 665:
             leftLane = point
         else:
             rightLane = point
             break
 
-    vehiclePosition =  np.abs((leftLane + rightLane) / 2 - 665) * 0.006 # vehicle offset from center in meters
+    vehiclePosition =  ((leftLane + rightLane) / 2 - 665) * 0.006 # vehicle offset from center in meters
 
     # Plot the histogram
     plt.figure(figsize=(12, 6))
@@ -89,6 +90,8 @@ def displayVideoResult(videoName):
         print("Error: Could not open video file.")
         exit()
 
+    out = cv2.VideoWriter("finalVideo.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 30, (1280 * 3, 720))
+
     # Process video frames
     while True:
         ret, frame = video_capture.read()  # Read a frame from the video
@@ -104,8 +107,8 @@ def displayVideoResult(videoName):
 
         # Process the frame
         undistortedImage = undistort.undistort(frame)  # Use your undistort function
-        warpedImg = wi.warpImage(undistortedImage)    # Use your warp function
-        binaryImage, sobelImage = bi.binaryImage(warpedImg)  # Binary and Sobel images
+        warpedImg, warpMatrix = wi.warpImage(undistortedImage)    # Use your warp function
+        binaryImage = bi.binaryImage(warpedImg)  # Binary and Sobel images
         laneCoordinates = hist.histogramWithPeaks(binaryImage)  # Histogram peak detection
         leftLane, rightLane = 0, 0
 
@@ -116,7 +119,7 @@ def displayVideoResult(videoName):
                 rightLane = point
                 break
 
-        vehiclePosition = np.abs((leftLane + rightLane) / 2 - 665) * 0.006  # Vehicle offset from center in meters
+        vehiclePosition = ((leftLane + rightLane) / 2 - 665) * 0.006  # Vehicle offset from center in meters
 
         # Detect vertical lines
         filteredLanes = dl.detectVerticalLines(binaryImage, leftLane, rightLane)
@@ -137,8 +140,13 @@ def displayVideoResult(videoName):
             2,  # Thickness
             cv2.LINE_AA,  # Line type
         )
-        cv2.imshow("Processed Frame", displayImg)
-        cv2.imshow("Original Image", frame)        
+        # cv2.imshow("Processed Frame", displayImg)
+        # cv2.imshow("Original Image", frame)        
+
+        originalLines = warpToOriginal(filteredLanes, warpMatrix)
+        resultImage = drawLinesOnImage(frame, originalLines)
+        cv2.imshow("Lines on Original Image", np.hstack((frame, displayImg, resultImage)))
+        out.write(np.hstack((frame, displayImg, resultImage)))
 
         # Break the loop when 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -146,7 +154,34 @@ def displayVideoResult(videoName):
 
     # Release the video capture and close OpenCV windows
     video_capture.release()
+    out.release()
     cv2.destroyAllWindows()
+
+def warpToOriginal(lines, warpMatrix):
+    inverseTransform = np.linalg.inv(warpMatrix)  # Inverse matrix
+
+    # Transform each point of the lines using the inverse perspective matrix
+    originalLines = []
+    for line in lines:
+        x1, y1, x2, y2 = line
+        points = np.array([[x1, y1], [x2, y2]], dtype='float32').reshape(-1, 1, 2)
+        transformedPoints = cv2.perspectiveTransform(points, inverseTransform)
+        transformedPoints = transformedPoints.reshape(-1, 2)
+        originalLines.append((int(transformedPoints[0][0]), int(transformedPoints[0][1]),
+                               int(transformedPoints[1][0]), int(transformedPoints[1][1])))
+    return originalLines
+
+def drawLinesOnImage(originalImage, lines):
+    # Create a copy of the original image to draw on
+    outputImage = originalImage.copy()
+
+    # Loop through each line and draw it on the image
+    if lines is not None:
+        for line in lines:
+            x1, y1, x2, y2 = line
+            cv2.line(outputImage, (x1, y1), (x2, y2), color=(0, 0, 255), thickness=3)  # Red lines
+
+    return outputImage
 
 if __name__ == '__main__':
     main()

@@ -13,7 +13,7 @@ def binaryImage(image):
     # cv2.imshow("Blurred", blurred)
 
     # Compute gradients
-    sobelX = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)  # Gradient in x
+    sobelX = cv2.Sobel(blurred, cv2.CV_64F, 1, 0, ksize=3)  # Gradient in x
     sobelY = 0 # cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)  # Gradient in y
 
     gradient = np.sqrt(sobelX**2 + sobelY**2)
@@ -24,6 +24,7 @@ def binaryImage(image):
 
     _, sobelBinary = cv2.threshold(gradient, 50, 255, cv2.THRESH_BINARY)
     # cv2.imshow("Threshold 50", sobelBinary)
+    # cv2.imwrite("./output/SobleBinary.jpg", sobelBinary)
     # cv2.waitKey(0)
 
     # Create a binary mask for yellow and white colors in the HLS space
@@ -42,18 +43,21 @@ def binaryImage(image):
     # Combine the yellow and white masks
     colorMask = cv2.bitwise_or(yellowMask, whiteMask)
     # cv2.imshow("Color mask", colorMask)
+    # cv2.imwrite("./output/colorMask.jpg", colorMask)
     # cv2.waitKey(0)
 
     # Combine color and edge detection results
     combined = cv2.bitwise_or(sobelBinary, colorMask)
     # cv2.imshow("Sobel + color mask", combined)
+    # cv2.imwrite("./output/combined.jpg", combined)
     # cv2.waitKey(0)
 
     # Morphological closing to fill gaps
     kernel = np.ones((5, 5), np.uint8)
     closed = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel)
     # cv2.imshow("Morphological", closed)
+    # cv2.imwrite("./output/morphologicalClosing.jpg", closed)
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
 
-    return closed, gradient
+    return closed

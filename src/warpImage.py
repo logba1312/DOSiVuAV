@@ -4,11 +4,9 @@ import glob
 import matplotlib.pyplot as plt
 
 
-points = []
-
 def selectPoints(event, x, y, flags, param):
+    # If button is clicked, print the poin coordinates in terminal
     if event == cv2.EVENT_LBUTTONDOWN:
-        points.append((x, y))
         print(f"Point selected: {x, y}")
 
 def warpImage(image):
@@ -44,6 +42,7 @@ def warpImage(image):
     # Display the result
     # cv2.imshow("Warped Image", warpedImage)
     # plt.imshow(warpedImage)
+    # cv2.imwrite("./output/warpedImage.jpg", warpedImage)
     # cv2.destroyAllWindows()
 
-    return warpedImage
+    return warpedImage, matrix

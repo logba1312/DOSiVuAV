@@ -40,7 +40,7 @@ def calibrateCamera():
             cv2.drawChessboardCorners(img, (rows, columns), corners, ret)
 
         # Display the image
-        # cv2.imshow('chess board', img)
-        # cv2.waitKey(0)
+        cv2.imshow('chess board', img)
+        cv2.waitKey(0)
 
     return cv2.calibrateCamera(objectPointsArray, imagePointsArray, gray.shape[::-1], None, None)
