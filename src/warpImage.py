@@ -34,6 +34,7 @@ def warpImage(image):
     # Compute the perspective transformation matrix
     matrix = cv2.getPerspectiveTransform(sourcePoints, destinationPoints)
 
+    # Get the height and widht of image
     height, width = image.shape[:2]
 
     # Apply the perspective warp

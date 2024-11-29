@@ -16,7 +16,7 @@ def binaryImage(image):
     sobelX = cv2.Sobel(blurred, cv2.CV_64F, 1, 0, ksize=3)  # Gradient in x
     sobelY = 0 # cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)  # Gradient in y
 
-    gradient = np.sqrt(sobelX**2 + sobelY**2)
+    gradient = np.sqrt(sobelX**2 + sobelY**2) # This is the formula for calculating the gradient, but since the sobelY is 0 the gradient can be calculated as absolute value of sobelX
     gradient = np.uint8(255 * gradient / np.max(gradient))
 
     # cv2.imshow("Sobel", gradient)
@@ -34,7 +34,7 @@ def binaryImage(image):
     yellowMask = cv2.inRange(hls, lowerYellow, upperYellow)
 
     lowerWhite = np.array([0, 200, 0])
-    upperWhite = np.array([255, 255, 255])
+    upperWhite = np.array([255, 255, 255]) 
     whiteMask = cv2.inRange(hls, lowerWhite, upperWhite)
 
     # plt.imshow(hls)

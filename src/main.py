@@ -4,7 +4,6 @@ import glob
 import matplotlib.pyplot as plt
 from pathlib import Path
 
-
 import cameraCalibration as cc
 import undistort
 import warpImage as wi
@@ -21,18 +20,14 @@ def findFile(filename, search_path):
 def main():
     # _, mtx, dist, rvecs, tvecs = cc.calibrateCamera()
     # np.savez(r'C:\Users\david\OneDrive\Documents\DOSiVuAV\Zadatak\camera_cal\calib.npz', mtx=mtx, dist=dist, rvecs=rvecs, tvecs=tvecs)
-    # Load one of the test images
-    fileName = 'test1.jpg'
-    # fileName = 'challenge01.mp4'
 
-    displayImageResult(fileName)
-    # displayVideoResult(fileName)
+    # Load one of the test images/videos
+    # fileName = 'test2.jpg'
+    # displayImageResult(fileName)
+    fileName = 'project_video03.mp4'
+    displayVideoResult(fileName)
 
-    
-
-def displayImageResult(imgName):
-    # Open image
-    img = cv2.imread(findFile(imgName, Path(__file__).parent.parent))
+def laneDetection(img):
     # Change image size if the resolusion is different from camera resolution
     if img.shape[1] != 1280 or img.shape[0] != 720:
         # Resize the image to specific dimensions
@@ -44,53 +39,56 @@ def displayImageResult(imgName):
     undistortedImage = undistort.undistort(img)
     warpedImg, warpMatrix = wi.warpImage(undistortedImage)
     binaryImage = bi.binaryImage(warpedImg)
-    laneCooridnates = hist.histogramWithPeaks(binaryImage)
-    leftLane = 0
-    rightLane = 0
+    laneCoordinates = hist.histogramWithPeaks(binaryImage)
+    
+    # Calculate the x coordinates of the lef and right lane and the vehicle position
+    leftLane, rightLane, vehiclePosition = calculateLanesAndVehiclePosition(laneCoordinates)
 
-    for point in laneCooridnates:
-        if point <= 665:
-            leftLane = point
-        else:
-            rightLane = point
-            break
-
-    vehiclePosition =  ((leftLane + rightLane) / 2 - 665) * 0.006 # vehicle offset from center in meters
-
-    # Plot the histogram
-    plt.figure(figsize=(12, 6))
-    plt.subplot(1, 2, 1)
-    plt.imshow(warpedImg)
-    plt.scatter([leftLane, rightLane], [200, 200], color='red', label=['Left', 'Right'])
-    plt.scatter([leftLane, rightLane], [700, 700], color='red', label=['Left', 'Right'])
-    plt.plot([leftLane, leftLane], [200, 720], color='red', linewidth=2)
-    plt.plot([rightLane, rightLane], [200, 720], color='red', linewidth=2)
-    plt.title('Location of left and right lane')
-    plt.text(5, 35, f"Vehicle offset from center: {vehiclePosition:.3f}m", fontsize=12, color='yellow')
-
+    # Obtain the lines found on the position of left and right lanes
     filteredLanes = dl.detectVerticalLines(binaryImage, leftLane, rightLane)
 
-    # Visualize the result
+    # Draw detected lanes on the warped image
     for x1, y1, x2, y2 in filteredLanes:
         cv2.line(warpedImg, (x1, y1), (x2, y2), (0, 255, 0), 5)
 
-    plt.subplot(1, 2, 2)
-    plt.imshow(cv2.cvtColor(warpedImg, cv2.COLOR_BGR2RGB))
-    plt.title("Detected Vertical Lines")
-    plt.text(5, 35, f"Vehicle offset from center: {vehiclePosition:.3f}m", fontsize=12, color='white')
-    plt.tight_layout()
-    plt.show()
+    # Display the result 
+    cv2.putText(
+        warpedImg,
+        f"Vehicle offset: {vehiclePosition:.3f} m",  # Text content
+        (5, 500),  # Position (x, y)
+        cv2.FONT_HERSHEY_SIMPLEX,  # Font type
+        1,  # Font scale
+        (255, 255, 0),  # Font color (Light blue)
+        2,  # Thickness
+        cv2.LINE_AA,  # Line type
+    )
+    cv2.imshow("Processed Frame", warpedImg)
+    cv2.imshow("Original Image", img)        
+
+    originalLines = warpToOriginal(filteredLanes, warpMatrix)
+    resultImage = drawLinesOnImage(img, originalLines)
+    # cv2.imshow("Lines on Original Image", np.hstack((frame, displayImg, resultImage)))
+    # out.write(np.hstack((frame, displayImg, resultImage)))
+    cv2.imshow("Reverse warp", resultImage)
+
+    
+def displayImageResult(imgName):
+    # Open image
+    img = cv2.imread(findFile(imgName, Path(__file__).parent.parent))
+
+    # Run lane detection algorithm
+    laneDetection(img)
+    cv2.waitKey(0)
 
 def displayVideoResult(videoName):
     # Path to the video file
     video_capture = cv2.VideoCapture(findFile(videoName, Path(__file__).parent.parent))
+    # out = cv2.VideoWriter("finalVideo.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 30, (1280 * 3, 720))
 
     # Check if the video file was opened successfully
     if not video_capture.isOpened():
         print("Error: Could not open video file.")
         exit()
-
-    out = cv2.VideoWriter("finalVideo.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 30, (1280 * 3, 720))
 
     # Process video frames
     while True:
@@ -100,53 +98,8 @@ def displayVideoResult(videoName):
         if not ret:
             break
 
-        # Change image size if the resolution is different from camera resolution
-        if frame.shape[1] != 1280 or frame.shape[0] != 720:
-            newWidth, newHeight = 1280, 720
-            frame = cv2.resize(frame, (newWidth, newHeight), interpolation=cv2.INTER_LINEAR)
-
-        # Process the frame
-        undistortedImage = undistort.undistort(frame)  # Use your undistort function
-        warpedImg, warpMatrix = wi.warpImage(undistortedImage)    # Use your warp function
-        binaryImage = bi.binaryImage(warpedImg)  # Binary and Sobel images
-        laneCoordinates = hist.histogramWithPeaks(binaryImage)  # Histogram peak detection
-        leftLane, rightLane = 0, 0
-
-        for point in laneCoordinates:
-            if point <= 650:
-                leftLane = point
-            else:
-                rightLane = point
-                break
-
-        vehiclePosition = ((leftLane + rightLane) / 2 - 665) * 0.006  # Vehicle offset from center in meters
-
-        # Detect vertical lines
-        filteredLanes = dl.detectVerticalLines(binaryImage, leftLane, rightLane)
-
-        # Draw detected lanes on the warped image
-        for x1, y1, x2, y2 in filteredLanes:
-            cv2.line(warpedImg, (x1, y1), (x2, y2), (0, 255, 0), 5)
-
-        # Display the result using OpenCV (you can save the frames if needed)
-        displayImg = cv2.cvtColor(warpedImg, cv2.COLOR_BGR2RGB)  # Convert to RGB for display
-        cv2.putText(
-            displayImg,
-            f"Vehicle offset: {vehiclePosition:.3f} m",  # Text content
-            (5, 500),  # Position (x, y)
-            cv2.FONT_HERSHEY_SIMPLEX,  # Font type
-            1,  # Font scale
-            (255, 255, 0),  # Font color (Yellowish)
-            2,  # Thickness
-            cv2.LINE_AA,  # Line type
-        )
-        # cv2.imshow("Processed Frame", displayImg)
-        # cv2.imshow("Original Image", frame)        
-
-        originalLines = warpToOriginal(filteredLanes, warpMatrix)
-        resultImage = drawLinesOnImage(frame, originalLines)
-        cv2.imshow("Lines on Original Image", np.hstack((frame, displayImg, resultImage)))
-        out.write(np.hstack((frame, displayImg, resultImage)))
+        # Run lane detection algorithm
+        laneDetection(frame)
 
         # Break the loop when 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -154,8 +107,22 @@ def displayVideoResult(videoName):
 
     # Release the video capture and close OpenCV windows
     video_capture.release()
-    out.release()
+    # out.release()
     cv2.destroyAllWindows()
+
+def calculateLanesAndVehiclePosition(laneCoordinates):
+    # Calculate the x coordinates of the lef and right lane (closest two lines to the center of the image, one lef one right)
+    for point in laneCoordinates:
+        if point <= 665:            # 665 aproximatley the middle of the car in the warped image
+            leftLane = point
+        else:
+            rightLane = point
+            break
+
+    vehiclePosition = ((leftLane + rightLane) / 2 - 665) * 0.006  # Vehicle offset from center in meters
+    # 0.006 is calculated by dividing the number of pixels between the twto lanes, with the average lane width of USA highway lanes which is 3.7 meters
+
+    return leftLane, rightLane, vehiclePosition
 
 def warpToOriginal(lines, warpMatrix):
     inverseTransform = np.linalg.inv(warpMatrix)  # Inverse matrix

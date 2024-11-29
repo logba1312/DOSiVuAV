@@ -25,7 +25,7 @@ def undistort(img):
 
     # Display the final result
     # cv2.imshow('chess board', np.hstack((img, undistortedImg)))
-    # image = np.hstack((img, undistortedImg))
+    image = np.hstack((img, undistortedImg))
     # cv2.imwrite("Distortion-corrected.jpg", image)
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
