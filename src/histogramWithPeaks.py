@@ -21,13 +21,13 @@ def histogramWithPeaks(image):
     # print(histogram[peaks])
 
     # Plot the histogram
-    plt.figure(figsize=(10, 6))
-    plt.plot(histogram)
-    plt.scatter(peaks, histogram[peaks], color='red', label='Peaks')
-    plt.title('Histogram of Pixel Intensity in Each Column')
-    plt.xlabel('Column Index')
-    plt.ylabel('Number of 1 Pixels')
-    plt.grid(True)
-    plt.show()
+    # plt.figure(figsize=(10, 6))
+    # plt.plot(histogram)
+    # plt.scatter(peaks, histogram[peaks], color='red', label='Peaks')
+    # plt.title('Histogram of Pixel Intensity in Each Column')
+    # plt.xlabel('Column Index')
+    # plt.ylabel('Number of 1 Pixels')
+    # plt.grid(True)
+    # plt.show()
 
     return peaks

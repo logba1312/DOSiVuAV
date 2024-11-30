@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
-def detectVerticalLines(image, leftLaneCoordinate, rightLaneCoordinate, tolerance=20):
+def detectVerticalLines(image, leftLaneCoordinate, rightLaneCoordinate, tolerance=30):
     # Hough Line Transform
     lines = cv2.HoughLinesP(image, rho=1, theta=np.pi / 180, threshold=30, minLineLength=3, maxLineGap=100)
 

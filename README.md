@@ -28,6 +28,8 @@ The goals / steps of this project are the following:
 [image6]: ./output/combined.jpg "Sobel + Color Mask"
 [image7]: ./output/morphologicalClosing.jpg "Morphological Closing"
 [image8]: ./output/histogram.jpg "Histogram With Peaks"
+[image9]: ./output/HoughLines.jpg "Hough lines with vehicle offset"
+[image10]: ./output/polyImage.jpg "Polyfit lines with vehicle offset"
 [video1]: ./output/finalVideo.mp4 "Video"
 
 ---
@@ -86,7 +88,7 @@ With hindsight, the destination and source points should have been chosen differ
 #### 3. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
 The code described below an be found in ./src/binaryImage.py
-I wanted to create a binary image that made the lanes look as thick as possible and in order to achieve that, I used multiple algorithms combined. The algorithms in question are Sobel edge detection, threshold, binary masking, and morpological closing.
+I wanted to create a binary image that made the lanes look as thick as possible and in order to achieve that, I used multiple algorithms combined. The algorithms in question are Sobel edge detection, threshold, binary masking, and morpological closing. I chose the Sobel function for edge detection because it usually is faster than Canny, and speed is important in embeded systems since the usually don't have powerful hardware.  
 To prepare for the Sobel algorithm, first the warped image was turned into a gray image using cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) for the same reason as explained earlier. Secondly a Gaussian blur was applied in order to remove any existing noise that would impact the edge detection. Finally I used the cv2.Sobel function to calculate the gradient but only on the x-axis, because this would ignore all horisontal lines and detect vertial ones, which is exactly what we need. The output from the Sobel function is still not a binary image, so a binary threshold is applied to the image (but not before scaling the image to uint8 - values from 0 to 255). By testing multiple threshold values, 50 was showing great results. 
 ![image4]
 On some images the Sobel fumction detected the lanes very well but on others it struggled to detect the lanes. Therefore an aditional detection is needed. The method in question is applying a color mask on the image. We know that the color of the lanes are either white or yellow, so we search for all white and yellow pixels in the image. First we transform the picture from RGB to HLS. By separating color (Hue) from brightness (Lightness), we can focus on color detection regardless of variations in lighting conditions. For example, a yellow line on a bright road and the same yellow line in shadow will have different RGB values but similar Hue values. After that we use the cv2.inRange function which selects all the pixels that are within a given range. The ranges used in this project are the following:
@@ -121,6 +123,11 @@ In ./src/main.py we take all the detected peaks and only coose the ones that are
 
 To actually identify the lane line pixels I used the Hough Line Transform, and set its parameters to detect vertical lines. This is done by setting rho to 1 and theta to pi/180. To make sure that only the necessary lines are detected, i set the input image to be the binary image that we created earlier. After the algorithm calculates all the lines from the binary image I only select the lines detected Around the left and right line coordinates. After all these are the lines that we are interested in. 
 
+![image9]
+
+Now that we have the lines from both lanes, we can calculate a polynomial to fit in each lane line. This is done in the ./src/fitPolinomial.py module. First the left and right lane are seperated into two arrays. After that, for each lane line, we put all the points from the Hough lines through the np.polyfit function. This function performs a polynomial curve fit through the points of th edetected lines. We Ensure that the line will be curved by putting the deg parameter to 2 (2nd degree polynomial y=ax^2+bx+c).
+
+![image10]
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 

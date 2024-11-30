@@ -10,6 +10,7 @@ import warpImage as wi
 import binaryImage as bi
 import histogramWithPeaks as hist
 import detectLanes as dl
+from fitPolynomial import fitPolynomials
 
 def findFile(filename, search_path):
     # Iterate over all files matching the filename in the search_path directory and its subdirectories
@@ -22,9 +23,9 @@ def main():
     # np.savez(r'C:\Users\david\OneDrive\Documents\DOSiVuAV\Zadatak\camera_cal\calib.npz', mtx=mtx, dist=dist, rvecs=rvecs, tvecs=tvecs)
 
     # Load one of the test images/videos
-    fileName = 'test1.jpg'
+    fileName = 'test6.jpg'
     displayImageResult(fileName)
-    # fileName = 'project_video03.mp4'
+    # fileName = 'challenge01.mp4'
     # displayVideoResult(fileName)
 
 def laneDetection(img):
@@ -42,13 +43,50 @@ def laneDetection(img):
     laneCoordinates = hist.histogramWithPeaks(binaryImage)
     
     # Calculate the x coordinates of the lef and right lane and the vehicle position
-    leftLane, rightLane, vehiclePosition = calculateLanesAndVehiclePosition(laneCoordinates)
+    leftLaneLine, rightLaneLine, vehiclePosition = calculateLanesAndVehiclePosition(laneCoordinates)
 
     # Obtain the lines found on the position of left and right lanes
-    filteredLanes = dl.detectVerticalLines(binaryImage, leftLane, rightLane)
+    filteredLines = dl.detectVerticalLines(binaryImage, leftLaneLine, rightLaneLine)
+
+    # Fit a polynomial through each lane line
+    (leftXVals, leftYVals), (rightXVals, rightYVals) = fitPolynomials(filteredLines, warpedImg.shape[0], leftLaneLine, rightLaneLine)
+
+    # Visualization
+    polyImage = warpedImg.copy()
+
+    # Draw the left polynomial
+    if leftXVals is not None and leftYVals is not None:
+        for i in range(len(leftYVals) - 1):
+            cv2.line(polyImage, (int(leftXVals[i]), int(leftYVals[i])), (int(leftXVals[i+1]), int(leftYVals[i+1])), (255, 0, 0), 5)
+
+    # Draw the right polynomial
+    if rightXVals is not None and rightYVals is not None:
+        for i in range(len(rightYVals) - 1):
+            cv2.line(polyImage, (int(rightXVals[i]), int(rightYVals[i])), (int(rightXVals[i+1]), int(rightYVals[i+1])), (0, 0, 255), 5)
+
+    # Display the result of fitPolinomials
+    cv2.putText(
+        polyImage,
+        f"Vehicle offset: {vehiclePosition:.3f} m",  # Text content
+        (5, 500),  # Position (x, y)
+        cv2.FONT_HERSHEY_SIMPLEX,  # Font type
+        1,  # Font scale
+        (255, 255, 0),  # Font color (Light blue)
+        2,  # Thickness
+        cv2.LINE_AA,  # Line type
+    )
+    cv2.imshow("Fitted Polynomial", polyImage) 
+    cv2.imwrite("./output/polyImage.jpg", polyImage)
+    
+
+    originalLines = warpToOriginal(filteredLines, warpMatrix)
+    resultImage = drawLinesOnImage(img, originalLines)
+    # cv2.imshow("Lines on Original Image", np.hstack((frame, displayImg, resultImage)))
+    # cv2.imshow("Reverse warp", resultImage)
+    # cv2.imwrite("./output/HoughLines.jpg", warpedImg)
 
     # Draw detected lanes on the warped image
-    for x1, y1, x2, y2 in filteredLanes:
+    for x1, y1, x2, y2 in filteredLines:
         cv2.line(warpedImg, (x1, y1), (x2, y2), (0, 255, 0), 5)
 
     # Display the result 
@@ -63,13 +101,8 @@ def laneDetection(img):
         cv2.LINE_AA,  # Line type
     )
     cv2.imshow("Processed Frame", warpedImg)
-    cv2.imshow("Original Image", img)        
 
-    originalLines = warpToOriginal(filteredLanes, warpMatrix)
-    resultImage = drawLinesOnImage(img, originalLines)
-    # cv2.imshow("Lines on Original Image", np.hstack((frame, displayImg, resultImage)))
-    # out.write(np.hstack((frame, displayImg, resultImage)))
-    cv2.imshow("Reverse warp", resultImage)
+    return resultImage
 
     
 def displayImageResult(imgName):
@@ -77,7 +110,7 @@ def displayImageResult(imgName):
     img = cv2.imread(findFile(imgName, Path(__file__).parent.parent))
 
     # Run lane detection algorithm
-    laneDetection(img)
+    resultImage = laneDetection(img)
     cv2.waitKey(0)
 
 def displayVideoResult(videoName):
@@ -99,7 +132,8 @@ def displayVideoResult(videoName):
             break
 
         # Run lane detection algorithm
-        laneDetection(frame)
+        modifiedFrame = laneDetection(frame)
+        # out.write(np.hstack((frame, modifiedFrame)))
 
         # Break the loop when 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
