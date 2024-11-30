@@ -22,10 +22,10 @@ def main():
     # np.savez(r'C:\Users\david\OneDrive\Documents\DOSiVuAV\Zadatak\camera_cal\calib.npz', mtx=mtx, dist=dist, rvecs=rvecs, tvecs=tvecs)
 
     # Load one of the test images/videos
-    # fileName = 'test2.jpg'
-    # displayImageResult(fileName)
-    fileName = 'project_video03.mp4'
-    displayVideoResult(fileName)
+    fileName = 'test1.jpg'
+    displayImageResult(fileName)
+    # fileName = 'project_video03.mp4'
+    # displayVideoResult(fileName)
 
 def laneDetection(img):
     # Change image size if the resolusion is different from camera resolution

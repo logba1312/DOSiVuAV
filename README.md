@@ -27,6 +27,7 @@ The goals / steps of this project are the following:
 [image5]: ./output/colorMask.jpg "Color mask"
 [image6]: ./output/combined.jpg "Sobel + Color Mask"
 [image7]: ./output/morphologicalClosing.jpg "Morphological Closing"
+[image8]: ./output/histogram.jpg "Histogram With Peaks"
 [video1]: ./output/finalVideo.mp4 "Video"
 
 ---
@@ -86,16 +87,40 @@ With hindsight, the destination and source points should have been chosen differ
 
 The code described below an be found in ./src/binaryImage.py
 I wanted to create a binary image that made the lanes look as thick as possible and in order to achieve that, I used multiple algorithms combined. The algorithms in question are Sobel edge detection, threshold, binary masking, and morpological closing.
-To prepare for the Sobel algorithm, first the warped image was turned into a gray image using cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) for the same reason as explained earlier. Secondly a Gaussian blur was applied in order to remove any existing noise that would impact the edge detection. Finally I used the cv2.Sobel function to calculate the gradient but only on the x-axis, because this would ignore all horisontal lines and detect vertial ones, which is exactly what we need. The output from the Sobel function is still not a binary image, so a binary threshold is applied to the image (but not before scaling the image to uint8 - values from 0 to 255). By testing multiple threshold values, 50 was showing great results.
-
+To prepare for the Sobel algorithm, first the warped image was turned into a gray image using cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) for the same reason as explained earlier. Secondly a Gaussian blur was applied in order to remove any existing noise that would impact the edge detection. Finally I used the cv2.Sobel function to calculate the gradient but only on the x-axis, because this would ignore all horisontal lines and detect vertial ones, which is exactly what we need. The output from the Sobel function is still not a binary image, so a binary threshold is applied to the image (but not before scaling the image to uint8 - values from 0 to 255). By testing multiple threshold values, 50 was showing great results. 
 ![image4]
+On some images the Sobel fumction detected the lanes very well but on others it struggled to detect the lanes. Therefore an aditional detection is needed. The method in question is applying a color mask on the image. We know that the color of the lanes are either white or yellow, so we search for all white and yellow pixels in the image. First we transform the picture from RGB to HLS. By separating color (Hue) from brightness (Lightness), we can focus on color detection regardless of variations in lighting conditions. For example, a yellow line on a bright road and the same yellow line in shadow will have different RGB values but similar Hue values. After that we use the cv2.inRange function which selects all the pixels that are within a given range. The ranges used in this project are the following:
+```python
+    hls = cv2.cvtColor(image, cv2.COLOR_BGR2HLS)
+        lowerYellow = np.array([18, 130, 100])
+        upperYellow = np.array([30, 255, 255])
+        yellowMask = cv2.inRange(hls, lowerYellow, upperYellow)
+
+        lowerWhite = np.array([0, 200, 0])
+        upperWhite = np.array([255, 255, 255]) 
+        whiteMask = cv2.inRange(hls, lowerWhite, upperWhite)
+```
+On the image below we can see that all the lane lines were detected succesffuly. Even the lines from the lane next to the one we are in. This could prove useful when merging from one lane to another, but for this project we are interested only in the lines of the lane that the car is located in.  
 ![image5]
+To ensure that all the vertical lines in the image were detected, we combine the binary Sobel image and the binary image from the color mask. 
 ![image6]
+The Sobel edge detection detects two edges on a single lane line which is not ideal, so to fix that I fill the gaps using cv2.morphologyEx.
 ![image7]
+On the resulting image we can see that there is still a lot of unnecesary lines that were detected that aren't lane lines. This issue is solved by doing a hystogram in the next step. 
+I would like to note that there are more ways to ignore the unnecessary lines like applying a ROI or using different line detection methods like Canny or using different values for thresholds, but I wanted to keep as much information as possible from the image.  
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
-TODO: Add your text here!!!
+The code described below an be found in ./src/histogramWithPeaks.py
+This part of the code is where we sperate the useful data from the rest. Going pixel by pixel on the x-axis we sum up the number of white pixels in the binary image. Wit this we get a histogram showing the number of detected pixels per column. For vertical lanes the number of detected pixels will be higher than for any other lines. In some examples we have cars in other lanes that are detected as diagonal lines and since we calculate the sum of the column, the histogram will show a small value where the car is. The largest value will be where there are full straight lines and smaller values where the lines are cut. The exact pixel where the lines are are calculated with scipy.signal.find_peaks, where we can set the parameter of what is considered a peak. I set the value of anything over 100 that is at least 50 pixels away from each other on the x-axis.
+On the image below we can see that the yellow line has the largest value, followed by the edge between the wall and the road (with further development this can be very usefull to avoid the edge of the road which is not marked with a line), and then the rest of the lanes. For lane centering capabilities we only need the lane lines of our lane, which are allways the closest from the lef and right. Using this type of selecting lanes makes the program capable of centering in a new lane after merging.
+
+![image8]
+
+In ./src/main.py we take all the detected peaks and only coose the ones that are left and right of the center that I approximated is around pixel 665 of the warped image. To calculate the center and do more precise warping of the image, the dimensions of the car and the offset of the camera from the center of the car would be usefull. The position of the vehicle is calculated by subracting the center pixel(665) from the middle point of the left and right lines. If the number is negatve the care is more to the left and vice versa. To convert the pixels to meters we multiply the vehicle offset in pixels with 0.006 which is calculated by dividing the number of pixels between the twto lanes, with the average lane width of USA highway lanes which is 3.7 meters.
+
+To actually identify the lane line pixels I used the Hough Line Transform, and set its parameters to detect vertical lines. This is done by setting rho to 1 and theta to pi/180. To make sure that only the necessary lines are detected, i set the input image to be the binary image that we created earlier. After the algorithm calculates all the lines from the binary image I only select the lines detected Around the left and right line coordinates. After all these are the lines that we are interested in. 
+
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
