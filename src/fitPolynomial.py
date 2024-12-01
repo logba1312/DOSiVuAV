@@ -15,10 +15,10 @@ def fitPolynomials(filteredLines, imageHeight, leftLineX, rightLineX, threshold=
             rightLines.append(line)
 
     # Fit polynomials for both left and right lines
-    leftXVals, leftYVals = fitSinglePolynomial(leftLines, imageHeight)
-    rightXVals, rightYVals = fitSinglePolynomial(rightLines, imageHeight)
+    leftXVals, leftYVals, leftCoeff = fitSinglePolynomial(leftLines, imageHeight)
+    rightXVals, rightYVals, rightCoeff = fitSinglePolynomial(rightLines, imageHeight)
 
-    return (leftXVals, leftYVals), (rightXVals, rightYVals)
+    return (leftXVals, leftYVals, leftCoeff), (rightXVals, rightYVals, rightCoeff)
 
 # Helper function to fit a polynomial for a given set of lines
 def fitSinglePolynomial(lines, imageHeight):
@@ -33,6 +33,19 @@ def fitSinglePolynomial(lines, imageHeight):
         coefficients = np.polyfit(yPoints, xPoints, deg=2)
         yVals = np.linspace(0, imageHeight - 1, num=imageHeight)
         xVals = np.polyval(coefficients, yVals)
-        return xVals, yVals
+        return xVals, yVals, coefficients
     else:
-        return None, None
+        return None, None, None
+    
+def calculateCurvature(polyCoeffs, yEval, ymPerPix=30/720, xmPerPix=3.7/235):
+    # Extract coefficients
+    A = polyCoeffs[0]  # Quadratic coefficient
+    B = polyCoeffs[1]  # Linear coefficient
+
+    # Scale the polynomial to real-world values
+    A_real = A * (xmPerPix / (ymPerPix**2))
+    B_real = B * (xmPerPix / ymPerPix)
+
+    # Calculate the curvature radius
+    curvatureRadius = ((1 + (2 * A_real * yEval * ymPerPix + B_real) ** 2) ** 1.5) / abs(2 * A_real)
+    return curvatureRadius

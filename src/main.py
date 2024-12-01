@@ -10,7 +10,7 @@ import warpImage as wi
 import binaryImage as bi
 import histogramWithPeaks as hist
 import detectLanes as dl
-from fitPolynomial import fitPolynomials
+from fitPolynomial import fitPolynomials, calculateCurvature
 
 def findFile(filename, search_path):
     # Iterate over all files matching the filename in the search_path directory and its subdirectories
@@ -23,10 +23,10 @@ def main():
     # np.savez(r'C:\Users\david\OneDrive\Documents\DOSiVuAV\Zadatak\camera_cal\calib.npz', mtx=mtx, dist=dist, rvecs=rvecs, tvecs=tvecs)
 
     # Load one of the test images/videos
-    fileName = 'test6.jpg'
-    displayImageResult(fileName)
-    # fileName = 'challenge01.mp4'
-    # displayVideoResult(fileName)
+    # fileName = 'test6.jpg'
+    # displayImageResult(fileName)
+    fileName = 'challenge01.mp4'
+    displayVideoResult(fileName)
 
 def laneDetection(img):
     # Change image size if the resolusion is different from camera resolution
@@ -49,7 +49,7 @@ def laneDetection(img):
     filteredLines = dl.detectVerticalLines(binaryImage, leftLaneLine, rightLaneLine)
 
     # Fit a polynomial through each lane line
-    (leftXVals, leftYVals), (rightXVals, rightYVals) = fitPolynomials(filteredLines, warpedImg.shape[0], leftLaneLine, rightLaneLine)
+    (leftXVals, leftYVals, leftCoeff), (rightXVals, rightYVals, rightCoeff) = fitPolynomials(filteredLines, warpedImg.shape[0], leftLaneLine, rightLaneLine)
 
     # Visualization
     polyImage = warpedImg.copy()
@@ -64,45 +64,51 @@ def laneDetection(img):
         for i in range(len(rightYVals) - 1):
             cv2.line(polyImage, (int(rightXVals[i]), int(rightYVals[i])), (int(rightXVals[i+1]), int(rightYVals[i+1])), (0, 0, 255), 5)
 
+    # Calculate the curvature of the lanes
+    leftCurvature = calculateCurvature(leftCoeff, polyImage.shape[0])
+    rightCurvature = calculateCurvature(rightCoeff, polyImage.shape[0])
+
     # Display the result of fitPolinomials
     cv2.putText(
         polyImage,
-        f"Vehicle offset: {vehiclePosition:.3f} m",  # Text content
-        (5, 500),  # Position (x, y)
+        f"Left line curvature: {leftCurvature:.2f} m",  # Text content
+        (5, 100),  # Position (x, y)
         cv2.FONT_HERSHEY_SIMPLEX,  # Font type
         1,  # Font scale
-        (255, 255, 0),  # Font color (Light blue)
+        (255, 0, 0),  # Font color (Blue)
         2,  # Thickness
         cv2.LINE_AA,  # Line type
     )
-    cv2.imshow("Fitted Polynomial", polyImage) 
-    cv2.imwrite("./output/polyImage.jpg", polyImage)
-    
-
-    originalLines = warpToOriginal(filteredLines, warpMatrix)
-    resultImage = drawLinesOnImage(img, originalLines)
-    # cv2.imshow("Lines on Original Image", np.hstack((frame, displayImg, resultImage)))
-    # cv2.imshow("Reverse warp", resultImage)
-    # cv2.imwrite("./output/HoughLines.jpg", warpedImg)
-
-    # Draw detected lanes on the warped image
-    for x1, y1, x2, y2 in filteredLines:
-        cv2.line(warpedImg, (x1, y1), (x2, y2), (0, 255, 0), 5)
-
-    # Display the result 
     cv2.putText(
-        warpedImg,
-        f"Vehicle offset: {vehiclePosition:.3f} m",  # Text content
-        (5, 500),  # Position (x, y)
+        polyImage,
+        f"Right line curvature: {rightCurvature:.2f} m",  # Text content
+        (5, 150),  # Position (x, y)
+        cv2.FONT_HERSHEY_SIMPLEX,  # Font type
+        1,  # Font scale
+        (0, 0, 255),  # Font color (Red)
+        2,  # Thickness
+        cv2.LINE_AA,  # Line type
+    )
+    cv2.putText(
+        polyImage,
+        f"Vehicle offset: {vehiclePosition:.2f} m",  # Text content
+        (5, 200),  # Position (x, y)
         cv2.FONT_HERSHEY_SIMPLEX,  # Font type
         1,  # Font scale
         (255, 255, 0),  # Font color (Light blue)
         2,  # Thickness
         cv2.LINE_AA,  # Line type
     )
-    cv2.imshow("Processed Frame", warpedImg)
 
-    return resultImage
+    polyImage = fillLaneTransparent(polyImage, leftXVals, leftYVals, rightXVals, rightYVals)
+    cv2.imshow("Fitted Polynomial", polyImage) 
+    # cv2.imwrite("./output/polyImage.jpg", polyImage)
+
+    # outputImage = overlayLaneOnOriginal(img, polyImage, warpMatrix)
+    # cv2.imwrite("./output/unwarpedImage.jpg", outputImage)
+    # cv2.imshow("Final", outputImage)
+
+    return polyImage
 
     
 def displayImageResult(imgName):
@@ -116,7 +122,7 @@ def displayImageResult(imgName):
 def displayVideoResult(videoName):
     # Path to the video file
     video_capture = cv2.VideoCapture(findFile(videoName, Path(__file__).parent.parent))
-    # out = cv2.VideoWriter("finalVideo.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 30, (1280 * 3, 720))
+    out = cv2.VideoWriter("./output/finalVideo.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 20, (1280, 720))
 
     # Check if the video file was opened successfully
     if not video_capture.isOpened():
@@ -133,7 +139,7 @@ def displayVideoResult(videoName):
 
         # Run lane detection algorithm
         modifiedFrame = laneDetection(frame)
-        # out.write(np.hstack((frame, modifiedFrame)))
+        out.write(modifiedFrame)
 
         # Break the loop when 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -141,7 +147,7 @@ def displayVideoResult(videoName):
 
     # Release the video capture and close OpenCV windows
     video_capture.release()
-    # out.release()
+    out.release()
     cv2.destroyAllWindows()
 
 def calculateLanesAndVehiclePosition(laneCoordinates):
@@ -153,36 +159,39 @@ def calculateLanesAndVehiclePosition(laneCoordinates):
             rightLane = point
             break
 
-    vehiclePosition = ((leftLane + rightLane) / 2 - 665) * 0.006  # Vehicle offset from center in meters
-    # 0.006 is calculated by dividing the number of pixels between the twto lanes, with the average lane width of USA highway lanes which is 3.7 meters
+    vehiclePosition = ((leftLane + rightLane) / 2 - 665) * 0.016  # Vehicle offset from center in meters
+    # 0.016 is calculated by dividing the number of pixels between the twto lanes, with the average lane width of USA highway lanes which is 3.7 meters
 
     return leftLane, rightLane, vehiclePosition
 
-def warpToOriginal(lines, warpMatrix):
-    inverseTransform = np.linalg.inv(warpMatrix)  # Inverse matrix
+def fillLaneTransparent(image, leftXVals, leftYVals, rightXVals, rightYVals):
+    # Create an empty mask image
+    laneMask = np.zeros_like(image, dtype=np.uint8)
 
-    # Transform each point of the lines using the inverse perspective matrix
-    originalLines = []
-    for line in lines:
-        x1, y1, x2, y2 = line
-        points = np.array([[x1, y1], [x2, y2]], dtype='float32').reshape(-1, 1, 2)
-        transformedPoints = cv2.perspectiveTransform(points, inverseTransform)
-        transformedPoints = transformedPoints.reshape(-1, 2)
-        originalLines.append((int(transformedPoints[0][0]), int(transformedPoints[0][1]),
-                               int(transformedPoints[1][0]), int(transformedPoints[1][1])))
-    return originalLines
+    # Combine the left and right lane points into a single polygon
+    leftLanePoints = np.array(np.flipud(np.column_stack((leftXVals, leftYVals))))  # Flip vertically
+    rightLanePoints = np.array(np.column_stack((rightXVals, rightYVals)))  # Stack as (x, y)
+    lanePolygon = np.vstack((leftLanePoints, rightLanePoints)).astype(np.int32)  # Combine left and right
 
-def drawLinesOnImage(originalImage, lines):
-    # Create a copy of the original image to draw on
-    outputImage = originalImage.copy()
+    # Fill the polygon on the mask with green
+    cv2.fillPoly(laneMask, [lanePolygon], (0, 255, 0))  # Green color
 
-    # Loop through each line and draw it on the image
-    if lines is not None:
-        for line in lines:
-            x1, y1, x2, y2 = line
-            cv2.line(outputImage, (x1, y1), (x2, y2), color=(0, 0, 255), thickness=3)  # Red lines
+    # Create a weighted overlay for transparency
+    transparentLane = cv2.addWeighted(image, 1, laneMask, 0.3, 0)  # Adjust 0.3 for more/less transparency
 
-    return outputImage
+    return transparentLane
+
+def overlayLaneOnOriginal(originalImage, polyImage, warpMatrix):
+    # Compute the inverse perspective transform
+    inverseWarpMatrix = np.linalg.inv(warpMatrix)
+
+    # Warp the filled lane image back to the original perspective
+    originalPerspectiveLane = cv2.warpPerspective(polyImage, inverseWarpMatrix, (originalImage.shape[1], originalImage.shape[0]))
+
+    # Combine the lane mask with the original image
+    overlayImage = cv2.addWeighted(originalImage, 1, originalPerspectiveLane, 0.3, 0)  # Adjust transparency (0.3)
+    
+    return overlayImage
 
 if __name__ == '__main__':
     main()

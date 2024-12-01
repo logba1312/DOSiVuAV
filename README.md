@@ -30,6 +30,7 @@ The goals / steps of this project are the following:
 [image8]: ./output/histogram.jpg "Histogram With Peaks"
 [image9]: ./output/HoughLines.jpg "Hough lines with vehicle offset"
 [image10]: ./output/polyImage.jpg "Polyfit lines with vehicle offset"
+[image11]: ./output/unwarpedImage.jpg "Unwarped image"
 [video1]: ./output/finalVideo.mp4 "Video"
 
 ---
@@ -119,7 +120,7 @@ On the image below we can see that the yellow line has the largest value, follow
 
 ![image8]
 
-In ./src/main.py we take all the detected peaks and only coose the ones that are left and right of the center that I approximated is around pixel 665 of the warped image. To calculate the center and do more precise warping of the image, the dimensions of the car and the offset of the camera from the center of the car would be usefull. The position of the vehicle is calculated by subracting the center pixel(665) from the middle point of the left and right lines. If the number is negatve the care is more to the left and vice versa. To convert the pixels to meters we multiply the vehicle offset in pixels with 0.006 which is calculated by dividing the number of pixels between the twto lanes, with the average lane width of USA highway lanes which is 3.7 meters.
+In ./src/main.py we take all the detected peaks and only coose the ones that are left and right of the center that I approximated is around pixel 665 of the warped image. To calculate the center and do more precise warping of the image, the dimensions of the car and the offset of the camera from the center of the car would be usefull. The position of the vehicle is calculated by subracting the center pixel(665) from the middle point of the left and right lines. If the number is negatve the car is more to the left and vice versa. To convert the pixels to meters we multiply the vehicle offset in pixels with 0.016 which is calculated by dividing the number of pixels between the twto lanes, with the average lane width of USA highway lanes which is 3.7 meters.
 
 To actually identify the lane line pixels I used the Hough Line Transform, and set its parameters to detect vertical lines. This is done by setting rho to 1 and theta to pi/180. To make sure that only the necessary lines are detected, i set the input image to be the binary image that we created earlier. After the algorithm calculates all the lines from the binary image I only select the lines detected Around the left and right line coordinates. After all these are the lines that we are interested in. 
 
@@ -131,22 +132,28 @@ Now that we have the lines from both lanes, we can calculate a polynomial to fit
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-TODO: Add your text here!!!
+Calculating the position of the vehicle was already mentioned in the previous paragraph. 
+Calculating the curvature of the lane lines can be seen in the ./src/fitPolinomial.py module under the calculateCurvature function. For this function the parameters are the coefficients of the polynomial form the previous polyfit function, the y-coordinate at which the curvature is being evaluated (we'll allways calculate from the bottom most pixel), and two hard coded parameters that are approximations commonly used in lane detection systems to convert from image pixels to real-world dimensions in meters. For the meters per pixel in the y-dimension I assumed that the distance that we are measuring is 30m and we divide it with the height of the image. For the meters per pixel in the x-dimension I used the same method as before, dividing the average lane width in meters with the number of pixels between two lane lines. After scaling the coefficients to real-world values, the curvature is then calculated with the following formla: 
+
+R = (1+(2Ay+B)^2)^(3/2) / ∣2A∣
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-TODO: Add your text here!!!
+![image10]
+
+Due to the poor coice of warp paramaters once I attempmt to unwarp the lane lines and the lane itself, the lines are shifted a bit to the right, therefore for the final image I'll just use the warped image with the detected lane lines and the filled in lane. This image provides all the necessary information that we would usually get, just in a different perspective.
+
+![image11]
 
 ### Pipeline (video)
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-TODO: Add your text here!!!
 ![video1]
 
 ### Discussion
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-TODO: Add your text here!!!
+The biggest issue was finding the correct source and destination poinsts for the image warp. No doubt that took the longest from all of the modules. Second only to creating the binary image. A lot of combinations with parameters and edge deteciont types and types of thresholds made it tricky to choose correctly. And in the end it's not perfect. It does not work in al enviraoments. This program will fail at very sharp corners, and when there are white vehicles diretcly in front of the car. It also struggles to detect poorly visible lines. Increasing the contrast and shifting color spaces would most likely improve on this.
 
